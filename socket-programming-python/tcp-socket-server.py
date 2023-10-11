@@ -13,17 +13,17 @@ server.listen(5)
 read_fd=[server]
 write_fd=[]
 while True:
-    fd_ready_for_reading,fd_ready_for_writing,_ =select.select(read_fd,write_fd)
+    fd_ready_for_reading,fd_ready_for_writing,_ =select.select(read_fd,write_fd,[])
     client_data={}
     for s in fd_ready_for_reading:
         if s is server: # "is" and "is not" checks if both the python objects point to the same memory address or not
             client_conn_socket, client_addr=server.accept() # this is a system call but the kernel will return instantaenously, creating a new socket
-            print ("accepted new connection and created a new client socket fd: "+client_conn_socket)
+            print (f"accepted new connection and created a new client socket fd: {client_conn_socket.fileno()}")
             read_fd.append(client_conn_socket)
             client_data[client_conn_socket]=queue.Queue(-1)
         else:
             bytes_data=s.recv(1024) # this call will now copy the data from kernel recieve buffer to user space buffer, this will be done by the kernel
-            print("recieved "+bytes_data.decode("utf-8")+" from: "+s)
+            print(f"recieved {bytes_data.decode('utf-8')} from: {s.fileno()}")
             client_data[s]=client_data[s].put(bytes_data)
             # had i sent the data here, I might have got blocked
             # the socket.write call is blocking if the sendBuffer for kernel socket is full
@@ -34,14 +34,6 @@ while True:
     for s in fd_ready_for_writing:
         if s is not server:
             if client_data[s].empty():
-                print("there is nothing to be sent for socket: "+s+" i will probably not monitor it anymore")
+                print(f"there is nothing to be sent for socket: {s.fileno()}, i will probably not monitor it anymore")
             else:
                 s.send(client_data[s].get())
-
-
-
-
-
-
-
-
